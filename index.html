@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>법원직 합격</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
+        .font-mono { font-family: 'JetBrains+Mono', monospace; }
+        body { background-color: #020617; }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div id="status" class="text-3xl md:text-5xl font-bold mb-8 text-blue-400 text-center drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]">
+        자율학습
+    </div>
+
+    <div class="bg-slate-900/80 backdrop-blur-xl p-10 md:p-16 rounded-[40px] border border-slate-800 shadow-2xl w-full max-w-xl text-center relative overflow-hidden">
+        <div id="timer" class="text-8xl md:text-[10rem] font-mono font-bold tracking-tighter text-white leading-none">
+            00:00
+        </div>
+        <p id="timer-label" class="text-slate-400 mt-6 text-xl font-medium tracking-widest uppercase">Timer</p>
+        
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-blue-500 shadow-[0_0_20px_#3b82f6]"></div>
+    </div>
+
+    <div id="current-clock" class="mt-10 text-xl text-slate-500 font-medium">
+        현재 시각 00:00:00
+    </div>
+
+    <p class="mt-4 text-slate-600 text-sm italic text-center">
+        ※ 브라우저 정책상 화면을 한 번 클릭해야 알람이 작동합니다.<br>
+        (현재 음원 경로: public/*.mp3)
+    </p>
+
+    <script>
+        const SCHEDULE = [
+            { label: "1교시", start: "07:00", end: "08:40" },
+            { label: "2교시", start: "09:00", end: "10:40" },
+            { label: "3교시", start: "11:00", end: "12:40" },
+            { label: "점심시간", start: "12:40", end: "14:00" },
+            { label: "4교시", start: "14:00", end: "15:40" },
+            { label: "5교시", start: "16:00", end: "17:40" },
+            { label: "저녁시간", start: "17:40", end: "19:00" },
+            { label: "6교시", start: "19:00", end: "20:40" },
+            { label: "7교시", start: "20:50", end: "22:30" }
+        ];
+
+        // [수정] public 폴더 직하단 경로로 변경
+        const studyBell = new Audio('public/study.mp3');
+        const breakBell = new Audio('public/break.mp3');
+        const endBell = new Audio('public/end.mp3');
+
+        function update() {
+            const now = new Date();
+            const nowTotalSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+            document.getElementById('current-clock').innerText = `현재 시각 ${now.toLocaleTimeString('ko-KR')}`;
+
+            let current = null;
+
+            for (let i = 0; i < SCHEDULE.length; i++) {
+                const p = SCHEDULE[i];
+                const [sH, sM] = p.start.split(':').map(Number);
+                const [eH, eM] = p.end.split(':').map(Number);
+                const startSec = sH * 3600 + sM * 60;
+                const endSec = eH * 3600 + eM * 60;
+
+                if (nowTotalSec >= startSec && nowTotalSec < endSec) {
+                    current = p;
+                    const diff = endSec - nowTotalSec;
+                    const min = Math.floor(diff / 60);
+                    const sec = diff % 60;
+
+                    document.getElementById('status').innerText = `📑 ${p.label} 진행 중`;
+                    document.getElementById('timer').innerText = `${min}:${sec.toString().padStart(2, '0')}`;
+                    document.getElementById('timer-label').innerText = "교시 종료까지 남은 시간";
+                    
+                    if (nowTotalSec === startSec) studyBell.play().catch(e => console.log("재생 실패:", e));
+                    
+                    if (nowTotalSec === endSec - 1) {
+                        if (p.label === "7교시") endBell.play().catch(e => console.log("재생 실패:", e));
+                        else breakBell.play().catch(e => console.log("재생 실패:", e));
+                    }
+                    break;
+                }
+            }
+
+            if (!current) {
+                document.getElementById('status').innerText = "쉬는 시간 / 자율 학습";
+                document.getElementById('status').style.color = "#64748b";
+                document.getElementById('timer').innerText = "--:--";
+                document.getElementById('timer-label').innerText = "대기 중";
+            } else {
+                document.getElementById('status').style.color = "#60a5fa";
+            }
+        }
+
+        window.onclick = () => { console.log("오디오 활성화됨"); };
+
+        setInterval(update, 1000);
+        update();
+    </script>
+</body>
+</html>
