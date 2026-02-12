@@ -3,36 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>법원직 합격</title>
+    <title>법원직 합격 타이머</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
         .font-mono { font-family: 'JetBrains+Mono', monospace; }
         body { background-color: #020617; }
+        .past-period { text-decoration: line-through; color: #475569; } /* 취소선 스타일 */
+        .current-period { color: #60a5fa; font-weight: bold; } /* 현재 강조 스타일 */
     </style>
 </head>
-<body class="text-white min-h-screen flex flex-col items-center justify-center p-6">
+<body class="text-white min-h-screen flex flex-col items-center p-6 py-12">
 
-    <div id="status" class="text-3xl md:text-5xl font-bold mb-8 text-blue-400 text-center drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]">
+    <div id="status" class="text-4xl md:text-6xl font-bold mb-8 text-blue-400 text-center drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]">
         자율학습
     </div>
 
-    <div class="bg-slate-900/80 backdrop-blur-xl p-10 md:p-16 rounded-[40px] border border-slate-800 shadow-2xl w-full max-w-xl text-center relative overflow-hidden">
-        <div id="timer" class="text-8xl md:text-[10rem] font-mono font-bold tracking-tighter text-white leading-none">
+    <div class="bg-slate-900/80 backdrop-blur-xl p-10 md:p-14 rounded-[40px] border border-slate-800 shadow-2xl w-full max-w-xl text-center relative overflow-hidden mb-10">
+        <div id="timer" class="text-8xl md:text-[9rem] font-mono font-bold tracking-tighter text-white leading-none">
             00:00
         </div>
         <p id="timer-label" class="text-slate-400 mt-6 text-xl font-medium tracking-widest uppercase">Timer</p>
-        
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-blue-500 shadow-[0_0_20px_#3b82f6]"></div>
     </div>
 
-    <div id="current-clock" class="mt-10 text-xl text-slate-500 font-medium">
+    <div id="current-clock" class="mb-10 text-xl text-slate-500 font-medium">
         현재 시각 00:00:00
     </div>
 
-    <p class="mt-4 text-slate-600 text-sm italic text-center">
-        ※ 브라우저 정책상 화면을 한 번 클릭해야 알람이 작동합니다.<br>
-        (현재 음원 경로: public/*.mp3)
+    <div class="w-full max-w-md bg-slate-900/50 rounded-3xl p-6 border border-slate-800">
+        <h3 class="text-center text-slate-400 mb-4 font-bold border-b border-slate-800 pb-2">TODAY SCHEDULE</h3>
+        <ul id="schedule-list" class="space-y-3">
+            </ul>
+    </div>
+
+    <p class="mt-8 text-slate-600 text-sm italic text-center">
+        ※ 화면을 한 번 클릭해야 알람이 작동합니다.
     </p>
 
     <script>
@@ -48,10 +54,20 @@
             { label: "7교시", start: "20:50", end: "22:30" }
         ];
 
-        // [수정] public 폴더 직하단 경로로 변경
         const studyBell = new Audio('public/study.mp3');
         const breakBell = new Audio('public/break.mp3');
         const endBell = new Audio('public/end.mp3');
+
+        // 시간표 리스트 초기 생성
+        function initSchedule() {
+            const list = document.getElementById('schedule-list');
+            list.innerHTML = SCHEDULE.map((p, index) => `
+                <li id="period-${index}" class="flex justify-between text-lg px-2">
+                    <span>${p.label}</span>
+                    <span class="font-mono">${p.start} - ${p.end}</span>
+                </li>
+            `).join('');
+        }
 
         function update() {
             const now = new Date();
@@ -61,45 +77,54 @@
 
             let current = null;
 
-            for (let i = 0; i < SCHEDULE.length; i++) {
-                const p = SCHEDULE[i];
+            SCHEDULE.forEach((p, i) => {
                 const [sH, sM] = p.start.split(':').map(Number);
                 const [eH, eM] = p.end.split(':').map(Number);
                 const startSec = sH * 3600 + sM * 60;
                 const endSec = eH * 3600 + eM * 60;
+                
+                const element = document.getElementById(`period-${i}`);
 
                 if (nowTotalSec >= startSec && nowTotalSec < endSec) {
+                    // 진행 중인 교시
                     current = p;
                     const diff = endSec - nowTotalSec;
                     const min = Math.floor(diff / 60);
                     const sec = diff % 60;
 
-                    document.getElementById('status').innerText = `📑 ${p.label} 진행 중`;
+                    document.getElementById('status').innerText = p.label;
                     document.getElementById('timer').innerText = `${min}:${sec.toString().padStart(2, '0')}`;
-                    document.getElementById('timer-label').innerText = "교시 종료까지 남은 시간";
+                    document.getElementById('timer-label').innerText = "교시 종료까지";
                     
-                    if (nowTotalSec === startSec) studyBell.play().catch(e => console.log("재생 실패:", e));
-                    
+                    element.className = "flex justify-between text-lg px-2 current-period"; // 파란색 강조
+
+                    if (nowTotalSec === startSec) studyBell.play().catch(e => {});
                     if (nowTotalSec === endSec - 1) {
-                        if (p.label === "7교시") endBell.play().catch(e => console.log("재생 실패:", e));
-                        else breakBell.play().catch(e => console.log("재생 실패:", e));
+                        if (p.label === "7교시") endBell.play().catch(e => {});
+                        else breakBell.play().catch(e => {});
                     }
-                    break;
+                } else if (nowTotalSec >= endSec) {
+                    // 이미 지난 교시
+                    element.className = "flex justify-between text-lg px-2 past-period"; // 취소선
+                } else {
+                    // 아직 오지 않은 교시
+                    element.className = "flex justify-between text-lg px-2 text-slate-300";
                 }
-            }
+            });
 
             if (!current) {
-                document.getElementById('status').innerText = "쉬는 시간 / 자율 학습";
+                document.getElementById('status').innerText = "자율학습";
                 document.getElementById('status').style.color = "#64748b";
                 document.getElementById('timer').innerText = "--:--";
-                document.getElementById('timer-label').innerText = "대기 중";
+                document.getElementById('timer-label').innerText = "공부 화이팅!";
             } else {
                 document.getElementById('status').style.color = "#60a5fa";
             }
         }
 
-        window.onclick = () => { console.log("오디오 활성화됨"); };
+        window.onclick = () => { console.log("오디오 활성화"); };
 
+        initSchedule();
         setInterval(update, 1000);
         update();
     </script>
