@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-// 시간표 데이터
 const SCHEDULE = [
   { label: "1교시", start: "07:00", end: "08:40" },
   { label: "2교시", start: "09:00", end: "10:40" },
@@ -18,6 +17,7 @@ const SCHEDULE = [
 export default function TimerPage() {
   const [now, setNow] = useState(new Date());
   const [mounted, setMounted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // 기본값은 음소거(브라우저 정책 때문)
 
   useEffect(() => {
     setMounted(true);
@@ -38,21 +38,56 @@ export default function TimerPage() {
     return nowTotalSec >= start && nowTotalSec < end;
   });
 
+  // 소리 재생 함수
+  const playSound = (id: string) => {
+    if (isMuted) return; // 음소거 상태면 실행 안 함
+    const audio = document.getElementById(id) as HTMLAudioElement;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(() => console.log("상호작용 필요"));
+    }
+  };
+
+  // 정각/종료 알림 체크
+  useEffect(() => {
+    SCHEDULE.forEach(p => {
+      const start = getSeconds(p.start);
+      const end = getSeconds(p.end);
+      
+      if (nowTotalSec === start) playSound('studyBell');
+      if (nowTotalSec === end - 1) {
+        if (p.label === "7교시") playSound('endBell');
+        else playSound('breakBell');
+      }
+    });
+  }, [nowTotalSec]);
+
   if (!mounted) return null;
 
   return (
     <>
-      {/* 1. 디자인 엔진(Tailwind)을 여기에 바로 주입합니다 */}
       <script src="https://cdn.tailwindcss.com"></script>
-      
-      {/* 2. 폰트 및 배경 커스텀 스타일 */}
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
-        body { background-color: #020617; margin: 0; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&family=Pretendard:wght@400;700&display=swap');
+        body { background-color: #020617; margin: 0; font-family: 'Pretendard', sans-serif; }
         .font-mono { font-family: 'JetBrains+Mono', monospace !important; }
       `}} />
 
-      <main className="bg-[#020617] text-white min-h-screen flex flex-col items-center p-6 py-12 font-sans">
+      <main className="bg-[#020617] text-white min-h-screen flex flex-col items-center p-6 py-12">
+        
+        {/* 상단 컨트롤 바 */}
+        <div className="w-full max-w-xl flex justify-end mb-4">
+          <button 
+            onClick={() => setIsMuted(!isMuted)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur-md border border-slate-700 rounded-full transition-all active:scale-95"
+          >
+            <span className="text-xl">{isMuted ? '🔇' : '🔊'}</span>
+            <span className="text-sm font-bold text-slate-300">
+              {isMuted ? '음소거 중' : '소리 켬'}
+            </span>
+          </button>
+        </div>
+
         {/* 상태 헤더 */}
         <div className={`text-4xl md:text-6xl font-bold mb-8 text-center drop-shadow-[0_0_15px_rgba(96,165,250,0.5)] ${currentPeriod ? 'text-blue-400' : 'text-slate-500'}`}>
           {currentPeriod ? currentPeriod.label : "자율학습"}
@@ -100,7 +135,7 @@ export default function TimerPage() {
         </div>
 
         <p className="mt-8 text-slate-600 text-sm italic text-center">
-          ※ 화면을 한 번 클릭해야 알람이 작동합니다.
+          ※ 상단 스피커 버튼을 눌러 소리를 활성화해주세요.
         </p>
 
         <audio id="studyBell" src="/study.mp3" />
